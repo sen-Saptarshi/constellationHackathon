@@ -26,21 +26,16 @@ object Validations {
     validateIfPostContentIsGreaterThan200Chars(update.content)
   }
 
-  def deletePostValidationL1(
-    update: DeletePost,
-  ): DataApplicationValidationErrorOr[Unit] = valid
+  def deletePostValidationL1(): DataApplicationValidationErrorOr[Unit] = valid
 
-  def subscriptionValidationL1(
-    update: Subscribe,
-  ): DataApplicationValidationErrorOr[Unit] = valid
+  def subscriptionValidationL1(): DataApplicationValidationErrorOr[Unit] = valid
 
   // comment validations
 
   def createCommentValidationL1(update: CreateComment): DataApplicationValidationErrorOr[Unit] =
     validateIfCommentContentIsGreaterThan200Chars(update.content)
 
-  def deleteCommentValidationL1(update: DeleteComment): DataApplicationValidationErrorOr[Unit] = valid
-
+  def deleteCommentValidationL1(): DataApplicationValidationErrorOr[Unit] = valid
 
   def createPostValidationL0[F[_] : Async : SecurityProvider : JsonSerializer](
     signedUpdate   : Signed[CreatePost],
@@ -67,7 +62,7 @@ object Validations {
     calculatedState: SocialCalculatedState
   ): F[DataApplicationValidationErrorOr[Unit]] = for {
     userId <- getFirstAddressFromProofs(signedUpdate.proofs)
-    l1Validations = deletePostValidationL1(signedUpdate.value)
+    l1Validations = deletePostValidationL1()
     postNotExists = validateIfPostExists(signedUpdate.postId, userId, calculatedState)
   } yield l1Validations.productR(postNotExists)
 
@@ -77,7 +72,7 @@ object Validations {
   ): F[DataApplicationValidationErrorOr[Unit]] =
     for {
       userId <- getFirstAddressFromProofs(signedUpdate.proofs)
-      l1Validations = subscriptionValidationL1(signedUpdate.value)
+      l1Validations = subscriptionValidationL1()
       subscriptionUserExists = validateIfSubscriptionUserExists(signedUpdate.value, calculatedState)
       userAlreadySubscribed = validateIfUserAlreadySubscribed(signedUpdate.value, userId, calculatedState)
       userTryingToSubscribeSelf = validateIfUserIsSubscribingToSelf(signedUpdate.value, userId)
@@ -93,10 +88,10 @@ object Validations {
     calculatedState: SocialCalculatedState
   ): F[DataApplicationValidationErrorOr[Unit]] = for {
     updateBytes <- JsonSerializer[F].serialize[SocialUpdate](signedUpdate.value)
-    commentId = Hash.fromBytes(updateBytes).toString
+    _ = Hash.fromBytes(updateBytes).toString // Removed unused commentId assignment
     userId <- getFirstAddressFromProofs(signedUpdate.proofs)
     l1Validations = createCommentValidationL1(signedUpdate.value)
-    parentPostExists = validateIfParentPostExists(signedUpdate.value.parentPostId, userId, calculatedState)
+    parentPostExists = validateIfParentPostExists(signedUpdate.value.postId, userId, calculatedState)
   } yield l1Validations.productR(parentPostExists)
 
   // L0 Validation for Deleting a Comment
@@ -105,10 +100,8 @@ object Validations {
     calculatedState: SocialCalculatedState
   ): F[DataApplicationValidationErrorOr[Unit]] = for {
     userId <- getFirstAddressFromProofs(signedUpdate.proofs)
-    l1Validations = deleteCommentValidationL1(signedUpdate.value)
-    commentExists = validateIfCommentExists(signedUpdate.value.commentId, signedUpdate.value.parentPostId, userId, calculatedState)
+    l1Validations = deleteCommentValidationL1()
+    commentExists = validateIfCommentExists(signedUpdate.value.commentId, signedUpdate.value.postId, userId, calculatedState)
   } yield l1Validations.productR(commentExists)
-  
 
 }
-

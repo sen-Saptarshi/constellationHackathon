@@ -196,6 +196,11 @@ CMD service postgresql start && \
     su - postgres -c "psql $POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql" && \
     tail -f /dev/null
 ```
+For running the app
+
+``` bash
+./scripts/hydra destroy && ./scripts/hydra build --no_cache && ./scripts/hydra start-genesis
+```
 
 This Dockerfile will install postgres individually in each container/node.
 

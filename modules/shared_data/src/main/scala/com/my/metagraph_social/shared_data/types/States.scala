@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 object States {
   @derive(decoder, encoder)
-  case class UserPost(postId: String, content: String, ordinal: SnapshotOrdinal, postTime: LocalDateTime)
+  case class UserPost(postId: String, content: String, ordinal: SnapshotOrdinal, postTime: LocalDateTime, comments: List[UserComment] = List.empty)
 
 // added comment
   @derive(decoder, encoder)

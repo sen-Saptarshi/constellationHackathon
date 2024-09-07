@@ -134,7 +134,7 @@ object Combiners {
         .find(_.postId == update.postId)
         .toOptionT
         .getOrRaise(new Exception(s"Post does not exist"))
-      newComment = UserComment(commentId, update.content, currentOrdinal, LocalDateTime.now())
+      newComment = UserComment(commentId, update.postId, update.content, currentOrdinal, LocalDateTime.now())
       updatedPost = postToUpdate
         .focus(_.comments)
         .modify(existingComments => newComment +: existingComments)

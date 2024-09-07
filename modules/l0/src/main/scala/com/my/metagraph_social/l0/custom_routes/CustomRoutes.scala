@@ -25,17 +25,16 @@ case class CustomRoutes[F[_] : Async](calculatedStateService: CalculatedStateSer
   case class UserFeedPost(userId: Address, userPost: UserPost)
 
   @derive(decoder, encoder)
-  case class CommentRequest(content: String)
+  case class UserFeedComment(userId: Address, postId: String, userComment: UserComment)
 
   private def getAllUsersWithPosts: F[Response[F]] = {
     calculatedStateService.get
       .map(_.state)
       .map { state =>
         state.users.filter { info =>
-            val (_, userInfo) = info
-            userInfo.posts.nonEmpty
-          }
-          .keySet
+          val (_, userInfo) = info
+          userInfo.posts.nonEmpty
+        }.keySet
       }
       .flatMap { existingUsers =>
         Ok(existingUsers)
@@ -95,34 +94,12 @@ case class CustomRoutes[F[_] : Async](calculatedStateService: CalculatedStateSer
     } yield response
   }
 
-  // New Routes for Comment Functionality
-
-  private def addComment(userId: Address, postId: String, req: CommentRequest): F[Response[F]] = {
-    calculatedStateService.addComment(userId, postId, req.content) // Assumes addComment is implemented in the service
-      .flatMap {
-        case Some(comment) => Created(comment)
-        case None => NotFound(s"Post with ID $postId not found for user $userId")
-      }
-  }
-
+  // New GET Route for Fetching Comments
   private def getComments(postId: String): F[Response[F]] = {
     calculatedStateService.getComments(postId) // Assumes getComments is implemented in the service
-      .flatMap(comments => Ok(comments))
-  }
-
-  private def editComment(postId: String, commentId: String, req: CommentRequest): F[Response[F]] = {
-    calculatedStateService.editComment(postId, commentId, req.content) // Assumes editComment is implemented in the service
       .flatMap {
-        case Some(updatedComment) => Ok(updatedComment)
-        case None => NotFound(s"Comment with ID $commentId not found in post $postId")
-      }
-  }
-
-  private def deleteComment(postId: String, commentId: String): F[Response[F]] = {
-    calculatedStateService.deleteComment(postId, commentId) // Assumes deleteComment is implemented in the service
-      .flatMap {
-        case true => NoContent()
-        case false => NotFound(s"Comment with ID $commentId not found in post $postId")
+        case Some(comments) => Ok(comments.map(c => UserFeedComment(c.author, postId, c)))
+        case None => NotFound(s"No comments found for post ID $postId")
       }
   }
 
@@ -133,15 +110,8 @@ case class CustomRoutes[F[_] : Async](calculatedStateService: CalculatedStateSer
     case GET -> Root / "users" / AddressVar(userId) / "subscriptions" => getUserSubscriptions(userId)
     case GET -> Root / "users" / AddressVar(userId) / "feed" => getUserFeed(userId)
 
-    // Comment Routes
-    case req @ POST -> Root / "users" / AddressVar(userId) / "posts" / postId / "comments" =>
-      req.decode[CommentRequest](addComment(userId, postId, _))
-    case GET -> Root / "posts" / postId / "comments" =>
-      getComments(postId)
-    case req @ PUT -> Root / "posts" / postId / "comments" / commentId =>
-      req.decode[CommentRequest](editComment(postId, commentId, _))
-    case DELETE -> Root / "posts" / postId / "comments" / commentId =>
-      deleteComment(postId, commentId)
+    // GET Route for Comments
+    case GET -> Root / "posts" / postId / "comments" => getComments(postId)
   }
 
   val public: HttpRoutes[F] =
