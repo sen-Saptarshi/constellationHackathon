@@ -21,14 +21,11 @@ object Updates {
   @derive(decoder, encoder)
   case class Subscribe(userId: Address) extends SocialUpdate
 
-  // Added Comment feature
+  // Comments
   @derive(decoder, encoder)
-  case class CreateComment(postId: String, content: String) extends SocialUpdate
-
-  // @derive(decoder, encoder)
-  // case class EditComment(commentId: String, content: String) extends SocialUpdate
+  case class CreateComment(ownerId: Address, postId: String, content: String) extends SocialUpdate
 
   @derive(decoder, encoder)
-  case class DeleteComment(commentId: String, postId: String) extends SocialUpdate
+  case class DeleteComment(commentId: String, ownerId: Address, postId: String) extends SocialUpdate
 
 }

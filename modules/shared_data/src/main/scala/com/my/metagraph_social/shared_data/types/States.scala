@@ -11,22 +11,20 @@ import java.time.LocalDateTime
 
 object States {
   @derive(decoder, encoder)
-  case class UserPost(postId: String, content: String, ordinal: SnapshotOrdinal, postTime: LocalDateTime, comments: List[UserComment] = List.empty)
+  case class UserPost(postId: String, content: String, ordinal: SnapshotOrdinal, postTime: LocalDateTime, comments: List[UserComment])
 
-// added comment
   @derive(decoder, encoder)
-  case class UserComment(commentId: String, postId: String, content: String, ordinal: SnapshotOrdinal, commentTime: LocalDateTime)
+  case class UserComment(commentId: String, ownerId: Address, postId: String, content: String, ordinal: SnapshotOrdinal, commentTime: LocalDateTime)
 
   @derive(decoder, encoder)
   case class UserInformation(
     userId       : Address,
     posts        : List[UserPost],
-    comments     : List[UserComment], // added comment
     subscriptions: List[Address]
   )
 
   object UserInformation {
-    def empty(userId: Address): UserInformation = UserInformation(userId, List.empty, List.empty, List.empty)
+    def empty(userId: Address): UserInformation = UserInformation(userId, List.empty, List.empty)
   }
 
   @derive(decoder, encoder)

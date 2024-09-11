@@ -24,17 +24,15 @@ case class CustomRoutes[F[_] : Async](calculatedStateService: CalculatedStateSer
   @derive(decoder, encoder)
   case class UserFeedPost(userId: Address, userPost: UserPost)
 
-  @derive(decoder, encoder)
-  case class UserFeedComment(userId: Address, postId: String, userComment: UserComment)
-
   private def getAllUsersWithPosts: F[Response[F]] = {
     calculatedStateService.get
       .map(_.state)
       .map { state =>
         state.users.filter { info =>
-          val (_, userInfo) = info
-          userInfo.posts.nonEmpty
-        }.keySet
+            val (_, userInfo) = info
+            userInfo.posts.nonEmpty
+          }
+          .keySet
       }
       .flatMap { existingUsers =>
         Ok(existingUsers)
@@ -52,6 +50,7 @@ case class CustomRoutes[F[_] : Async](calculatedStateService: CalculatedStateSer
           }
           .toList
           .flatten
+
       }
       .flatMap { allPosts =>
         Ok(allPosts)
@@ -94,14 +93,29 @@ case class CustomRoutes[F[_] : Async](calculatedStateService: CalculatedStateSer
     } yield response
   }
 
-  // New GET Route for Fetching Comments
-  private def getComments(postId: String): F[Response[F]] = {
-    calculatedStateService.getComments(postId) // Assumes getComments is implemented in the service
-      .flatMap {
-        case Some(comments) => Ok(comments.map(c => UserFeedComment(c.author, postId, c)))
-        case None => NotFound(s"No comments found for post ID $postId")
-      }
+  // Comments
+  private def getPostComments(userId: Address, postId: String): F[Response[F]] = {
+    // calculatedStateService.get
+    //   .map(_.state)
+    //   .flatMap { state =>
+    //     state.users.get(userId) match {
+    //       case Some(userInfo) =>
+    //         userInfo.posts.find(_.postId == postId) match {
+    //           case Some(post) => Ok(post.comments) // Correctly access the comments from UserPost
+    //           case None       => NotFound(s"Post with ID $postId not found.")
+    //         }
+    //       case None => NotFound(s"User with ID $userId not found.")
+    //     }
+    //   }
+
+    calculatedStateService.get
+        .map(_.state)
+        .map{ state => state.users.get(userId) }
+        .flatMap { maybeUserInfo => 
+          maybeUserInfo.fold(NotFound())(userInfo => Ok(userInfo.posts.find(_.postId == postId).map(_.comments)))
+        }
   }
+  
 
   private val routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case GET -> Root / "users" => getAllUsersWithPosts
@@ -109,9 +123,7 @@ case class CustomRoutes[F[_] : Async](calculatedStateService: CalculatedStateSer
     case GET -> Root / "users" / AddressVar(userId) / "posts" => getUserPosts(userId)
     case GET -> Root / "users" / AddressVar(userId) / "subscriptions" => getUserSubscriptions(userId)
     case GET -> Root / "users" / AddressVar(userId) / "feed" => getUserFeed(userId)
-
-    // GET Route for Comments
-    case GET -> Root / "posts" / postId / "comments" => getComments(postId)
+    case GET -> Root / "users" / AddressVar(userId) / "posts" / postId / "comments" => getPostComments(userId, postId)
   }
 
   val public: HttpRoutes[F] =

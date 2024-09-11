@@ -28,7 +28,7 @@ object Combiners {
       updateAddress <- getFirstAddressFromProofs(signedUpdate.proofs)
       currentUserInformation = state.calculated.users
         .getOrElse(updateAddress, UserInformation.empty(updateAddress))
-      userPost = UserPost(postId, update.content, currentOrdinal, LocalDateTime.now())
+      userPost = UserPost(postId, update.content, currentOrdinal, LocalDateTime.now(), Nil)
       userInformationUpdated = currentUserInformation
         .focus(_.posts)
         .modify(existingPosts => userPost +: existingPosts)
@@ -98,7 +98,7 @@ object Combiners {
 
   def combineSubscribe[F[_] : Async : SecurityProvider](
     signedUpdate: Signed[Subscribe],
-    state       : DataState[SocialOnChainState, SocialCalculatedState]
+    state       : DataState[SocialOnChainState, SocialCalculatedState],
   ): F[DataState[SocialOnChainState, SocialCalculatedState]] = {
     val update = signedUpdate.value
     for {
@@ -116,6 +116,7 @@ object Combiners {
     } yield DataState(onChainStateUpdated, calculatedStateUpdated)
   }
 
+  // Comments Features
   def combineCreateComment[F[_] : Async : SecurityProvider : JsonSerializer](
     signedUpdate  : Signed[CreateComment],
     state         : DataState[SocialOnChainState, SocialCalculatedState],
@@ -125,19 +126,22 @@ object Combiners {
     for {
       updateBytes <- JsonSerializer[F].serialize[SocialUpdate](update)
       commentId = Hash.fromBytes(updateBytes).toString
-      updateAddress <- getFirstAddressFromProofs(signedUpdate.proofs)
       currentUserInformation <- state.calculated.users
-        .get(updateAddress)
+        .get(update.ownerId)
         .toOptionT
         .getOrRaise(new Exception(s"Could not get user information"))
       postToUpdate <- currentUserInformation.posts
         .find(_.postId == update.postId)
         .toOptionT
         .getOrRaise(new Exception(s"Post does not exist"))
-      newComment = UserComment(commentId, update.postId, update.content, currentOrdinal, LocalDateTime.now())
+
+      // Ensure comments are correctly referenced and updated
+      newComment = UserComment(commentId, update.ownerId, update.postId, update.content, currentOrdinal, LocalDateTime.now())
+      updatedComments = postToUpdate.comments :+ newComment // Appending the new comment properly
       updatedPost = postToUpdate
         .focus(_.comments)
-        .modify(existingComments => newComment +: existingComments)
+        .replace(updatedComments) // Correctly updating the comments list in the post
+
       userInformationUpdated = currentUserInformation
         .focus(_.posts)
         .modify(_.map(post => if (post.postId == update.postId) updatedPost else post))
@@ -145,7 +149,7 @@ object Combiners {
       onChainStateUpdated = SocialOnChainState(state.onChain.updates :+ signedUpdate.value)
       calculatedStateUpdated = state.calculated
         .focus(_.users)
-        .modify(_.updated(updateAddress, userInformationUpdated))
+        .modify(_.updated(update.ownerId, userInformationUpdated))
     } yield DataState(onChainStateUpdated, calculatedStateUpdated)
   }
 
@@ -155,9 +159,8 @@ object Combiners {
   ): F[DataState[SocialOnChainState, SocialCalculatedState]] = {
     val update = signedUpdate.value
     for {
-      updateAddress <- getFirstAddressFromProofs(signedUpdate.proofs)
       currentUserInformation <- state.calculated.users
-        .get(updateAddress)
+        .get(update.ownerId)
         .toOptionT
         .getOrRaise(new Exception(s"Could not get user information"))
       postToUpdate <- currentUserInformation.posts
@@ -174,7 +177,7 @@ object Combiners {
       onChainStateUpdated = SocialOnChainState(state.onChain.updates :+ signedUpdate.value)
       calculatedStateUpdated = state.calculated
         .focus(_.users)
-        .modify(_.updated(updateAddress, userInformationUpdated))
+        .modify(_.updated(update.ownerId, userInformationUpdated))
     } yield DataState(onChainStateUpdated, calculatedStateUpdated)
   }
 }

@@ -4,7 +4,7 @@ import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all._
 import com.my.metagraph_social.shared_data.Utils.getLastCurrencySnapshotOrdinal
-import com.my.metagraph_social.shared_data.combiners.Combiners._
+import com.my.metagraph_social.shared_data.combiners.Combiners.{combineCreatePost, combineDeletePost, combineEditPost, combineSubscribe, combineCreateComment, combineDeleteComment}
 import com.my.metagraph_social.shared_data.types.States.{SocialCalculatedState, SocialOnChainState}
 import com.my.metagraph_social.shared_data.types.Updates._
 import com.my.metagraph_social.shared_data.validations.Validations._
@@ -23,10 +23,10 @@ object LifecycleSharedFunctions {
 
   def validateUpdate(update: SocialUpdate): DataApplicationValidationErrorOr[Unit] =
     update match {
-      case createPost: CreatePost    => createPostValidationL1(createPost)
-      case editPost: EditPost        => editPostValidationL1(editPost)
-      case deletePost: DeletePost    => deletePostValidationL1(deletePost)
-      case subscribe: Subscribe      => subscriptionValidationL1(subscribe)
+      case createPost: CreatePost => createPostValidationL1(createPost)
+      case editPost: EditPost => editPostValidationL1(editPost)
+      case deletePost: DeletePost => deletePostValidationL1(deletePost)
+      case subscribe: Subscribe => subscriptionValidationL1(subscribe)
       case createComment: CreateComment => createCommentValidationL1(createComment)
       case deleteComment: DeleteComment => deleteCommentValidationL1(deleteComment)
     }
@@ -49,6 +49,8 @@ object LifecycleSharedFunctions {
         case _: Subscribe =>
           val signedSubscribe = signedUpdate.asInstanceOf[Signed[Subscribe]]
           subscriptionValidationL0(signedSubscribe, state.calculated)
+        
+        //Comment
         case _: CreateComment =>
           val signedCreateComment = signedUpdate.asInstanceOf[Signed[CreateComment]]
           createCommentValidationL0(signedCreateComment, state.calculated)
@@ -92,6 +94,8 @@ object LifecycleSharedFunctions {
                   case _: Subscribe =>
                     val signedSubscribe = signedUpdate.asInstanceOf[Signed[Subscribe]]
                     combineSubscribe(signedSubscribe, acc)
+
+                  //Comment
                   case _: CreateComment =>
                     val signedCreateComment = signedUpdate.asInstanceOf[Signed[CreateComment]]
                     combineCreateComment(signedCreateComment, acc, currentOrdinal)

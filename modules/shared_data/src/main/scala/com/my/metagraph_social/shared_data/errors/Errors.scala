@@ -17,7 +17,6 @@ object Errors {
     def whenA(cond: Boolean): DataApplicationValidationType = if (cond) invalid else valid
   }
 
-  // Existing Errors
   case object TooLargePost extends DataApplicationValidationError {
     val message = "Post greater than 200 chars"
   }
@@ -27,11 +26,11 @@ object Errors {
   }
 
   case object PostNotExists extends DataApplicationValidationError {
-    val message = "Post does not exist"
+    val message = "Post not exists"
   }
 
   case object SubscriptionUserDoesNotExists extends DataApplicationValidationError {
-    val message = "Subscription user does not exist"
+    val message = "Subscription user does not exists"
   }
 
   case object UserAlreadySubscribed extends DataApplicationValidationError {
@@ -39,10 +38,10 @@ object Errors {
   }
 
   case object CannotSubscribeSelf extends DataApplicationValidationError {
-    val message = "Cannot subscribe to self"
+    val message = "Cannot subscribe self"
   }
 
-  // Added Errors
+    // Added Errors
   case object TooLargeComment extends DataApplicationValidationError {
     val message = "Comment greater than 200 chars"
   }
@@ -58,4 +57,9 @@ object Errors {
   case object CommentDoesNotExist extends DataApplicationValidationError {
     val message = "Comment does not exist"
   }
+
+  case object CommentAlreadyExists extends DataApplicationValidationError {
+    val message = "Comment already exists"
+  }
 }
+

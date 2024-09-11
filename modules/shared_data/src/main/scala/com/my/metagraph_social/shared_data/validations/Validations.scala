@@ -26,16 +26,19 @@ object Validations {
     validateIfPostContentIsGreaterThan200Chars(update.content)
   }
 
-  def deletePostValidationL1(): DataApplicationValidationErrorOr[Unit] = valid
+  def deletePostValidationL1(
+    update: DeletePost,
+  ): DataApplicationValidationErrorOr[Unit] = valid
 
-  def subscriptionValidationL1(): DataApplicationValidationErrorOr[Unit] = valid
+  def subscriptionValidationL1(
+    update: Subscribe,
+  ): DataApplicationValidationErrorOr[Unit] = valid
 
-  // comment validations
-
+  // Comment L1 validations
   def createCommentValidationL1(update: CreateComment): DataApplicationValidationErrorOr[Unit] =
     validateIfCommentContentIsGreaterThan200Chars(update.content)
 
-  def deleteCommentValidationL1(): DataApplicationValidationErrorOr[Unit] = valid
+  def deleteCommentValidationL1(update: DeleteComment): DataApplicationValidationErrorOr[Unit] = valid
 
   def createPostValidationL0[F[_] : Async : SecurityProvider : JsonSerializer](
     signedUpdate   : Signed[CreatePost],
@@ -62,7 +65,7 @@ object Validations {
     calculatedState: SocialCalculatedState
   ): F[DataApplicationValidationErrorOr[Unit]] = for {
     userId <- getFirstAddressFromProofs(signedUpdate.proofs)
-    l1Validations = deletePostValidationL1()
+    l1Validations = deletePostValidationL1(signedUpdate.value)
     postNotExists = validateIfPostExists(signedUpdate.postId, userId, calculatedState)
   } yield l1Validations.productR(postNotExists)
 
@@ -72,7 +75,7 @@ object Validations {
   ): F[DataApplicationValidationErrorOr[Unit]] =
     for {
       userId <- getFirstAddressFromProofs(signedUpdate.proofs)
-      l1Validations = subscriptionValidationL1()
+      l1Validations = subscriptionValidationL1(signedUpdate.value)
       subscriptionUserExists = validateIfSubscriptionUserExists(signedUpdate.value, calculatedState)
       userAlreadySubscribed = validateIfUserAlreadySubscribed(signedUpdate.value, userId, calculatedState)
       userTryingToSubscribeSelf = validateIfUserIsSubscribingToSelf(signedUpdate.value, userId)
@@ -81,27 +84,28 @@ object Validations {
       .productR(userAlreadySubscribed)
       .productR(userTryingToSubscribeSelf)
 
-  // Comment Feature
-
+  // L0 Validation of Comment
   def createCommentValidationL0[F[_] : Async : SecurityProvider : JsonSerializer](
     signedUpdate   : Signed[CreateComment],
     calculatedState: SocialCalculatedState
   ): F[DataApplicationValidationErrorOr[Unit]] = for {
     updateBytes <- JsonSerializer[F].serialize[SocialUpdate](signedUpdate.value)
-    _ = Hash.fromBytes(updateBytes).toString // Removed unused commentId assignment
-    userId <- getFirstAddressFromProofs(signedUpdate.proofs)
+    commentId = Hash.fromBytes(updateBytes).toString // Removed unused commentId assignment
     l1Validations = createCommentValidationL1(signedUpdate.value)
-    parentPostExists = validateIfParentPostExists(signedUpdate.value.postId, userId, calculatedState)
-  } yield l1Validations.productR(parentPostExists)
+    parentPostExists = validateIfParentPostExists(signedUpdate.postId, signedUpdate.ownerId, calculatedState)
+    commentAlreadyExists = validateIfCommentAlreadyExists(commentId, signedUpdate.postId, signedUpdate.ownerId, calculatedState)
+  } yield l1Validations.productR(parentPostExists).productR(commentAlreadyExists)
 
   // L0 Validation for Deleting a Comment
   def deleteCommentValidationL0[F[_] : Async : SecurityProvider](
     signedUpdate   : Signed[DeleteComment],
     calculatedState: SocialCalculatedState
   ): F[DataApplicationValidationErrorOr[Unit]] = for {
-    userId <- getFirstAddressFromProofs(signedUpdate.proofs)
-    l1Validations = deleteCommentValidationL1()
-    commentExists = validateIfCommentExists(signedUpdate.value.commentId, signedUpdate.value.postId, userId, calculatedState)
+    l1Validations = deleteCommentValidationL1(signedUpdate.value)
+    commentExists = validateIfCommentExists(signedUpdate.commentId, signedUpdate.postId, signedUpdate.ownerId, calculatedState)
   } yield l1Validations.productR(commentExists)
 
+
+
 }
+
