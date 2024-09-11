@@ -1,19 +1,21 @@
-Metagraph - Data Application - Social
-=============================
+# Metagraph - Data Application - Social
 
-This example demonstrates a basic social media use case using the Data API. In the example, a client can send four types of signed data updates to a metagraph: one to create a post, another to edit a post, another to delete a post, and another to subscribe to a user. These updates are validated before being merged into the snapshot state.
+This example demonstrates a basic social media use case using the Data API. In the example, a client can send four types of signed data updates to a metagraph: one to create a post, another to edit a post, another to delete a post, and another to subscribe to a user, and another to comment on a post and another to delete a comment. These updates are validated before being merged into the snapshot state.
 
 Here's how the social media system works:
 
--   Each user can create, edit, and delete their own posts.
--   Each user can subscribe to other users to follow their posts.
--   Posts and subscriptions are validated to ensure their integrity and consistency.
--   Users cannot create duplicate posts with the same content.
--   This example persists the calculatedState in an external database, in this example PostgresSQL.
--   To use external storage, we've created a new service in the `Main.scala` files of both layers: l0 and data-l1. This new service implements the trait `ExternalStorageService`. Our `CalculatedStateService` receives an implementation of `ExternalStorageService` and calls the function to set the calculated state externally when we call the set function of `CalculatedStateService`. This function also was updated to work atomically.  
--   For more information, please refer to the section `Persisting User Calculated State to PostgreSQL`.
-Template
---------
+- Each user can create, edit, and delete their own posts.
+- Each user can subscribe to other users to follow their posts.
+- Each Users can comment on posts and delete comments.
+- Posts and subscriptions are validated to ensure their integrity and consistency.
+- Users cannot create duplicate posts with the same content.
+- Users cannot create duplicate comments with the same content under same post.
+- This example persists the calculatedState in an external database, in this example PostgresSQL.
+- To use external storage, we've created a new service in the `Main.scala` files of both layers: l0 and data-l1. This new service implements the trait `ExternalStorageService`. Our `CalculatedStateService` receives an implementation of `ExternalStorageService` and calls the function to set the calculated state externally when we call the set function of `CalculatedStateService`. This function also was updated to work atomically.
+- For more information, please refer to the section `Persisting User Calculated State to PostgreSQL`.
+  Template
+
+---
 
 Primary code for the example can be found in the following files:
 
@@ -29,23 +31,23 @@ Primary code for the example can be found in the following files:
 
 The methods of the DataApplication are invoked in the following sequence:
 
--   `validateUpdate`
--   `validateData`
--   `combine`
--   `dataEncoder`
--   `dataDecoder`
--   `calculatedStateEncoder`
--   `signedDataEntityDecoder`
--   `serializeBlock`
--   `deserializeBlock`
--   `serializeState`
--   `deserializeState`
--   `serializeUpdate`
--   `deserializeUpdate`
--   `setCalculatedState`
--   `getCalculatedState`
--   `hashCalculatedState`
--   `routes`
+- `validateUpdate`
+- `validateData`
+- `combine`
+- `dataEncoder`
+- `dataDecoder`
+- `calculatedStateEncoder`
+- `signedDataEntityDecoder`
+- `serializeBlock`
+- `deserializeBlock`
+- `serializeState`
+- `deserializeState`
+- `serializeUpdate`
+- `deserializeUpdate`
+- `setCalculatedState`
+- `getCalculatedState`
+- `hashCalculatedState`
+- `routes`
 
 For a more detailed understanding, please refer to the [complete documentation](https://docs.constellationnetwork.io/sdk/frameworks/currency/data-api) on the Data API.
 
@@ -55,30 +57,30 @@ Customizes routes for our application.
 
 In this example, the following endpoints are implemented:
 
--   GET `<metagraph l0 url>/data-application/users/:user_id/posts`: Returns all user posts.
--   GET `<metagraph l0 url>/data-application/users/:user_id/subscriptions`: Returns the subscriptions of a user.
--   GET `<metagraph l0 url>/data-application/users/:user_id/feed`: Returns the user's feed of posts from their subscriptions.
+- GET `<metagraph l0 url>/data-application/users/:user_id/posts`: Returns all user posts.
+- GET `<metagraph l0 url>/data-application/users/:user_id/subscriptions`: Returns the subscriptions of a user.
+- GET `<metagraph l0 url>/data-application/users/:user_id/feed`: Returns the user's feed of posts from their subscriptions.
+- GET `<metagraph l0 url>/data-application/users/:user_id/posts/:post_id/comments`: Returns the comments of a post.
 
-Scripts
--------
+## Scripts
 
-This example includes a script to generate, sign, and send data updates to the metagraph in `scripts/send_data_transaction.js`. This is a simple script where you must provide the `globalL0Url` and the `metagraphL1DataUrl` to match the configuration of your metagraph. You also must provide a private key representing the user that will create, edit, delete a post, or subscribe to another user (client) that is sending the transaction. This key will be used to sign the transaction and to log in your wallet to the network.
+This example includes a script to generate, sign, and send data updates to the metagraph in `scripts/send_data_transaction.js`. This is a simple script where you must provide the `globalL0Url` and the `metagraphL1DataUrl` to match the configuration of your metagraph. You also must provide a private key representing the user that will create, edit, delete a post, or subscribe to another user (client), and for features like making comment and deleting a comment that is sending the transaction. This key will be used to sign the transaction and to log in your wallet to the network.
 
 ### Usage
 
--   With node installed, move to the directory and then type: `npm i`.
--   Replace the `globalL0Url`, `metagraphL1DataUrl`, and `privateKey` variables with your values.
--   Run the script with `node send_data_transaction.js`.
--   Query the state GET endpoint at `<your metagraph L0 base url>/data-application/posts` to see the updated state after each update.
+- With node installed, move to the directory and then type: `npm i`.
+- Replace the `globalL0Url`, `metagraphL1DataUrl`, and `privateKey` variables with your values.
+- Run the script with `node send_data_transaction.js`.
+- Query the state GET endpoint at `<your metagraph L0 base url>/data-application/posts` to see the updated state after each update.
 
-Persisting User Calculated State to PostgreSQL
-----------------------------------------------
+## Persisting User Calculated State to PostgreSQL
 
 The metagraph will store the user-calculated state in an external PostgreSQL database. This PostgreSQL database requires a table named calculated_states with two columns: ordinal (number) and state (jsonb). The database credentials should be specified in the application.json file.
 
 To set up PostgreSQL using Euclid, you can customize your Dockerfile. Starting from version v0.13.0, Euclid supports running custom Dockerfiles.
 
 To do this, add the following content to a new file named `Dockerfile` in the directory: `infra/docker/custom/metagraph-base-image`.
+
 ```dockerfile
 ARG TESSELLATION_VERSION_NAME
 
@@ -196,9 +198,20 @@ CMD service postgresql start && \
     su - postgres -c "psql $POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql" && \
     tail -f /dev/null
 ```
+
+Also don't forget to change the `/modules/shared_data/src/main/resources/application.conf` file with the correct database url and credentials.
+
+```js
+postgres-database {
+  url = "jdbc:postgresql://localhost:5432/social"
+  user = "social"
+  password = "social"
+}
+```
+
 For running the app
 
-``` bash
+```bash
 ./scripts/hydra destroy && ./scripts/hydra build --no_cache && ./scripts/hydra start-genesis
 ```
 
